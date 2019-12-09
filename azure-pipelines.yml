@@ -1,3 +1,5 @@
+trigger:
+- release
 
 variables:
   buildConfiguration: 'Release'
