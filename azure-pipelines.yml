@@ -1,16 +1,19 @@
+
 variables:
   buildConfiguration: 'Release'
+  artifactDrop: 'drop'
+  releaseBranchName: 'release'
 
 stages:
 - stage: 'Build'
-  displayName: 'Build the web application'
-  jobs: 
+  displayName: 'Build the Web Application'
+  jobs:
   - job: 'Build'
-    displayName: 'Build job'
+    displayName: 'Build Job'
     pool:
-      vmImage: 'Ubuntu-16.04'
-      demands:
-        - npm
+       vmImage: 'Ubuntu-16.04'
+       demands:
+         - npm
 
     variables:
       wwwrootDir: 'Tailspin.SpaceGame.Web/wwwroot'
@@ -60,11 +63,17 @@ stages:
         zipAfterPublish: true
 
     - publish: '$(Build.ArtifactStagingDirectory)'
-      artifact: drop
+      artifact: $(artifactDrop)
 
-- stage: 'Deploy'
+- stage: 'Dev'
   displayName: 'Deploy the web application'
   dependsOn: Build
+  condition: |
+   and 
+   (
+     succeeded(),
+     eq(variables['Build.SourceBranchName'], variables['releaseBranchName'])
+   )
   jobs:
   - deployment: Deploy
     pool:
@@ -73,14 +82,14 @@ stages:
     variables:
     - group: Release
     strategy:
-      runOnce:
-        deploy:
-          steps:
-          - download: current
-            artifact: drop
-          - task: AzureWebApp@1
-            displayName: 'Azure App Service Deploy: website'
-            inputs:
-              azureSubscription: 'Resource Manager - Tailspin - Space Game'
-              appName: '$(WebAppName)'
-              package: '$(Pipeline.Workspace)/drop/$(buildConfiguration)/*.zip'
+     runOnce:
+       deploy:
+         steps:
+         - download: current
+           artifact: $(artifactDrop)
+         - task: AzureWebApp@1
+           displayName: 'Azure App Service Deploy: website'
+           inputs:
+            azureSubscription: 'Resource Manager - Tailspin - Space Game'
+            appName: '$(WebAppName)'
+            package: '$(Pipeline.Workspace)/drop/$(buildConfiguration)/*.zip'
